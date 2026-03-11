@@ -317,9 +317,9 @@ export default function App() {
                     opacity: { duration: 0.5 },
                     y: { repeat: Infinity, duration: 3, ease: "easeInOut" }
                   }}
-                  className="text-[64px] relative z-10 drop-shadow-[0_10px_20px_rgba(198,241,53,0.15)]"
+                  className="w-32 h-32 relative z-10 drop-shadow-[0_10px_20px_rgba(198,241,53,0.15)] flex items-center justify-center"
                 >
-                  🛺
+                  <img src="https://img.icons8.com/color/512/rickshaw.png" className="w-full h-full object-contain" alt="YAVU" />
                 </motion.div>
                 
                 <div className="mt-1 flex gap-1">
