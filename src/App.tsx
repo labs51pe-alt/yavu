@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sun, Moon, Search, History, User, Home as HomeIcon, Shield, MessageSquare, Star, ChevronRight, Navigation, PhoneCall } from 'lucide-react';
+import { Sun, Moon, Search, History, User, Home as HomeIcon, Shield, MessageSquare, Star, ChevronRight, Navigation, PhoneCall, Check } from 'lucide-react';
 import { cn } from './utils';
 import { Screen, Trip, Driver, Role } from './types';
 
@@ -188,6 +188,33 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('splash');
   const [role, setRole] = useState<Role | null>(null);
   const [isDark, setIsDark] = useState(true);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [hasShared, setHasShared] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setShowInstallBanner(false);
+    }
+  };
   const [selectedDest, setSelectedDest] = useState<string>('');
   const [selectedPrice, setSelectedPrice] = useState<number>(0);
   const [showDriverProfile, setShowDriverProfile] = useState(false);
@@ -209,6 +236,12 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [screen]);
+
+  const shareRoute = useCallback(() => {
+    const message = `¡Hola! Estoy siguiendo mi viaje en YAVU 🛺.\nConductor: José Mamani (Verificado ✅)\nPlaca: XYZ-123\nDestino: ${selectedDest || 'Mercado Central'}\nSigue mi ruta en tiempo real aquí: ${window.location.href}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+    setHasShared(true);
+  }, [selectedDest]);
 
   const toggleTheme = useCallback(() => {
     const nextDark = !isDark;
@@ -440,30 +473,22 @@ export default function App() {
           <div className="flex-1 flex flex-col relative overflow-hidden">
             <StatusBar isDark={isDark} onToggleTheme={toggleTheme} />
             <div className="flex-1 relative">
-              {/* Fake Map Background */}
+              {/* Real Map Integration */}
               <div className="absolute inset-0 bg-[#0A1408] overflow-hidden">
-                <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#C6F135 1px, transparent 1px), linear-gradient(90deg, #C6F135 1px, transparent 1px)', backgroundSize: '56px 56px' }} />
-                {/* Roads */}
-                <div className="absolute top-[20%] left-0 right-0 h-2 bg-white/5" />
-                <div className="absolute top-[50%] left-0 right-0 h-3 bg-white/10" />
-                <div className="absolute left-[30%] top-0 bottom-0 w-2 bg-white/5" />
-                <div className="absolute left-[60%] top-0 bottom-0 w-3 bg-white/10" />
+                <iframe 
+                  width="100%" 
+                  height="100%" 
+                  frameBorder="0" 
+                  style={{ border: 0, filter: isDark ? 'invert(90%) hue-rotate(180deg) brightness(0.8) contrast(1.2)' : 'none' }}
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15836.4382894371!2d-76.375489!3d-6.483667!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x91ba093f1857973d%3A0x8898989898989898!2sTarapoto!5e0!3m2!1sen!2spe!4v1710170000000!5m2!1sen!2spe"
+                  allowFullScreen
+                ></iframe>
                 
-                {/* Blips */}
-                <div className="absolute top-1/4 left-1/4">
-                  <motion.div animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute -inset-4 border-2 border-zipp-lime rounded-full" />
-                  <div className="text-xl relative z-10">🛺</div>
-                </div>
-                <div className="absolute top-2/3 left-3/4">
-                  <motion.div animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }} transition={{ repeat: Infinity, duration: 2, delay: 0.5 }} className="absolute -inset-4 border-2 border-zipp-lime rounded-full" />
-                  <div className="text-xl relative z-10">🛺</div>
-                </div>
-
-                {/* User Pin */}
+                {/* User Pin Overlay */}
                 <motion.div 
                   animate={{ y: [0, -10, 0] }}
                   transition={{ repeat: Infinity, duration: 2.5 }}
-                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20"
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20 pointer-events-none"
                 >
                   <div className="w-11 h-11 rounded-full rounded-br-none -rotate-45 bg-gradient-to-br from-zipp-lime to-zipp-green-lt flex items-center justify-center shadow-[0_6px_22px_rgba(198,241,53,0.5)]">
                     <div className="rotate-45 text-lg">👤</div>
@@ -471,6 +496,31 @@ export default function App() {
                   <div className="w-3 h-1 bg-black/40 rounded-full mt-1 blur-[1px]" />
                 </motion.div>
               </div>
+
+              {/* Install PWA Banner */}
+              <AnimatePresence>
+                {showInstallBanner && (
+                  <motion.div 
+                    initial={{ y: -100, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -100, opacity: 0 }}
+                    className="absolute top-20 left-4 right-4 z-50 bg-zipp-black/90 backdrop-blur-xl border border-zipp-lime/30 p-4 rounded-2xl flex items-center gap-4 shadow-2xl"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-zipp-lime flex items-center justify-center text-2xl shadow-lg">🛺</div>
+                    <div className="flex-1">
+                      <div className="text-sm font-bold">Instalar YAVU</div>
+                      <div className="text-[10px] text-zipp-black-5">Accede rápido desde tu pantalla de inicio</div>
+                    </div>
+                    <button 
+                      onClick={handleInstallClick}
+                      className="bg-zipp-lime text-zipp-black px-4 py-2 rounded-xl text-xs font-black"
+                    >
+                      INSTALAR
+                    </button>
+                    <button onClick={() => setShowInstallBanner(false)} className="text-zipp-black-5">✕</button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* UI Overlay */}
               <div className="flex-1 flex flex-col pointer-events-none z-30 h-full">
@@ -491,6 +541,24 @@ export default function App() {
 
                 <div className="mt-auto bg-zipp-black/95 backdrop-blur-2xl rounded-t-[32px] border-t border-zipp-lime/20 px-6 pt-5 pb-32 pointer-events-auto">
                   <div className="w-10 h-1 bg-zipp-black-5 rounded-full mx-auto mb-5" />
+                  
+                  {/* School Service Feature */}
+                  <div 
+                    onClick={() => {
+                      setSelectedDest('Colegio Santa Rosa');
+                      setSelectedPrice(5);
+                      go('searching');
+                    }}
+                    className="mb-5 bg-gradient-to-r from-zipp-lime/20 to-zipp-green-md/10 border border-zipp-lime/30 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:border-zipp-lime transition-all group pointer-events-auto"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-zipp-lime flex items-center justify-center text-2xl shadow-lg group-hover:scale-110 transition-transform">🎒</div>
+                    <div className="flex-1">
+                      <div className="text-sm font-black text-zipp-lime">SERVICIO ESCOLAR</div>
+                      <div className="text-[10px] text-zipp-black-5">Traslado seguro para tus hijos</div>
+                    </div>
+                    <div className="bg-zipp-lime text-zipp-black px-3 py-1 rounded-full text-[10px] font-black">PEDIR</div>
+                  </div>
+
                   <div 
                     onClick={() => go('destination')}
                     className="flex items-center gap-4 bg-zipp-black-3 border border-zipp-lime/20 rounded-2xl p-4 cursor-pointer hover:border-zipp-lime transition-all"
@@ -656,39 +724,37 @@ export default function App() {
         return (
           <div className="flex-1 flex flex-col">
             <div className="h-[52vh] bg-[#0A1408] relative overflow-hidden shrink-0">
-              <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'linear-gradient(#C6F135 1px, transparent 1px), linear-gradient(90deg, #C6F135 1px, transparent 1px)', backgroundSize: '55px 55px' }} />
-              {/* Roads */}
-              <div className="absolute top-[20%] left-0 right-0 h-2 bg-white/5" />
-              <div className="absolute top-[52%] left-0 right-0 h-3 bg-white/10" />
-              <div className="absolute left-[18%] top-0 bottom-0 w-2 bg-white/5" />
-              <div className="absolute left-[50%] top-0 bottom-0 w-3 bg-white/10" />
+              <iframe 
+                width="100%" 
+                height="100%" 
+                frameBorder="0" 
+                style={{ border: 0, filter: isDark ? 'invert(90%) hue-rotate(180deg) brightness(0.8) contrast(1.2)' : 'none' }}
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15836.4382894371!2d-76.375489!3d-6.483667!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x91ba093f1857973d%3A0x8898989898989898!2sTarapoto!5e0!3m2!1sen!2spe!4v1710170000000!5m2!1sen!2spe"
+                allowFullScreen
+              ></iframe>
               
               {/* Destination Pin */}
-              <div className="absolute top-[16%] right-[20%] flex flex-col items-center">
+              <div className="absolute top-[16%] right-[20%] flex flex-col items-center pointer-events-none">
                 <div className="w-9 h-9 rounded-full rounded-br-none -rotate-45 bg-zipp-yellow flex items-center justify-center text-sm shadow-xl">
                   <span className="rotate-45">🏁</span>
                 </div>
                 <div className="w-3 h-1 bg-black/40 rounded-full mt-1 blur-[1px]" />
               </div>
 
-              {/* Route Line */}
-              <div className="absolute bottom-[38%] left-[30%] w-[130px] h-[75px] border-2 border-dashed border-zipp-lime/50 rounded-tr-[50px] border-l-0 border-b-0" />
-              
               {/* Rider */}
               <motion.div 
-                animate={{ y: [0, -7, 0], rotate: [-4, -2, -4] }}
-                transition={{ repeat: Infinity, duration: 3 }}
-                className="absolute bottom-[36%] left-[27%] text-4xl z-10 drop-shadow-2xl"
+                animate={{ 
+                  x: [0, 50, 100],
+                  y: [0, -20, 0],
+                  rotate: [-4, 2, -4] 
+                }}
+                transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
+                className="absolute bottom-[36%] left-[27%] text-4xl z-10 drop-shadow-2xl pointer-events-none"
               >
                 🛺
               </motion.div>
-              <motion.div 
-                animate={{ scale: [0.5, 2], opacity: [0.7, 0] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                className="absolute bottom-[36%] left-[24%] w-14 h-14 rounded-full border-2 border-zipp-lime/40"
-              />
-
-              <div className="absolute top-4 left-4 right-4 flex gap-2">
+              
+              <div className="absolute top-4 left-4 right-4 flex gap-2 pointer-events-none">
                 <div className="bg-zipp-black/90 backdrop-blur-md border border-zipp-lime/20 px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-zipp-lime rounded-full animate-pulse" />
                   En camino
@@ -752,6 +818,14 @@ export default function App() {
                   <Shield size={18} /> SOS
                 </button>
               </div>
+
+              <button 
+                onClick={shareRoute}
+                className={`w-full ${hasShared ? 'bg-zipp-lime text-zipp-black shadow-lg shadow-zipp-lime/20' : 'bg-green-600/20 border border-green-500/30 text-green-400'} font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all`}
+              >
+                {hasShared ? <Check size={18} /> : <MessageSquare size={18} />}
+                {hasShared ? 'Ruta Compartida con Éxito' : 'Compartir Ruta por WhatsApp'}
+              </button>
 
               <button onClick={() => go('payment')} className="w-full bg-zipp-lime text-zipp-black font-display py-4 rounded-2xl shadow-lg shadow-zipp-lime/20 mt-2">
                 ✓ Llegué — Pagar ahora
