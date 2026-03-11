@@ -60,18 +60,29 @@ const ThemeToggle = ({ isDark, toggle }: { isDark: boolean; toggle: () => void }
   </button>
 );
 
-const StatusBar = ({ isDark, onToggleTheme }: { isDark: boolean; onToggleTheme: () => void }) => (
-  <div className="h-12 px-6 flex items-center justify-between shrink-0 z-50">
-    <span className="text-sm font-bold text-zipp-text">9:41</span>
-    <div className="flex items-center gap-3">
-      <ThemeToggle isDark={isDark} toggle={onToggleTheme} />
-      <div className="flex gap-1 text-xs text-zipp-text">
-        <span>📶</span>
-        <span>🔋</span>
+const StatusBar = ({ isDark, onToggleTheme }: { isDark: boolean; onToggleTheme: () => void }) => {
+  const [time, setTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="h-12 px-6 flex items-center justify-between shrink-0 z-50">
+      <span className="text-sm font-bold text-zipp-text">{time}</span>
+      <div className="flex items-center gap-3">
+        <ThemeToggle isDark={isDark} toggle={onToggleTheme} />
+        <div className="flex gap-1 text-xs text-zipp-text">
+          <span>📶</span>
+          <span>🔋</span>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const BottomNav = ({ current, onNav, role }: { current: Screen; onNav: (s: Screen) => void; role: Role | null }) => {
   const passengerItems = [
@@ -191,8 +202,21 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [hasShared, setHasShared] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationName, setLocationName] = useState('Jr. Los Rosales 245');
 
   useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+      }, (error) => {
+        console.error("Error getting location:", error);
+      });
+    }
+
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -480,7 +504,10 @@ export default function App() {
                   height="100%" 
                   frameBorder="0" 
                   style={{ border: 0, filter: isDark ? 'invert(90%) hue-rotate(180deg) brightness(0.8) contrast(1.2)' : 'none' }}
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15836.4382894371!2d-76.375489!3d-6.483667!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x91ba093f1857973d%3A0x8898989898989898!2sTarapoto!5e0!3m2!1sen!2spe!4v1710170000000!5m2!1sen!2spe"
+                  src={userLocation 
+                    ? `https://maps.google.com/maps?q=${userLocation.lat},${userLocation.lng}&z=16&output=embed`
+                    : "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15836.4382894371!2d-76.375489!3d-6.483667!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x91ba093f1857973d%3A0x8898989898989898!2sTarapoto!5e0!3m2!1sen!2spe!4v1710170000000!5m2!1sen!2spe"
+                  }
                   allowFullScreen
                 ></iframe>
                 
@@ -506,7 +533,9 @@ export default function App() {
                     exit={{ y: -100, opacity: 0 }}
                     className="absolute top-20 left-4 right-4 z-50 bg-zipp-black/90 backdrop-blur-xl border border-zipp-lime/30 p-4 rounded-2xl flex items-center gap-4 shadow-2xl"
                   >
-                    <div className="w-12 h-12 rounded-xl bg-zipp-lime flex items-center justify-center text-2xl shadow-lg">🛺</div>
+                    <div className="w-12 h-12 rounded-xl bg-zipp-lime flex items-center justify-center text-2xl shadow-lg">
+                      <img src="https://img.icons8.com/color/512/rickshaw.png" className="w-10 h-10 object-contain" alt="YAVU" />
+                    </div>
                     <div className="flex-1">
                       <div className="text-sm font-bold">Instalar YAVU</div>
                       <div className="text-[10px] text-zipp-black-5">Accede rápido desde tu pantalla de inicio</div>
@@ -525,14 +554,16 @@ export default function App() {
               {/* UI Overlay */}
               <div className="flex-1 flex flex-col pointer-events-none z-30 h-full">
                 <div className="safe-top" />
-                <div className="px-5 pt-12 flex items-center gap-3 pointer-events-auto">
-                  <div className="font-display text-2xl text-zipp-lime bg-zipp-black/80 backdrop-blur-md border border-zipp-lime/20 px-4 py-2 rounded-full leading-none">YAVU</div>
-                  <div className="flex-1 bg-zipp-black/80 backdrop-blur-md border border-zipp-lime/10 px-4 py-2.5 rounded-full overflow-hidden">
-                    <div className="text-base font-bold truncate">Jr. Los Rosales 245</div>
-                    <div className="text-sm text-zipp-black-5">San Isidro, Lima</div>
-                  </div>
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-zipp-green-md to-zipp-lime flex items-center justify-center text-sm font-black text-zipp-black shadow-lg">M</div>
+              <div className="px-5 pt-12 flex items-center gap-3 pointer-events-auto">
+                <div className="font-display text-2xl text-zipp-lime bg-zipp-black/80 backdrop-blur-md border border-zipp-lime/20 px-4 py-2 rounded-full leading-none">YAVU</div>
+                <div className="flex-1 bg-zipp-black/80 backdrop-blur-md border border-zipp-lime/10 px-4 py-2.5 rounded-full overflow-hidden">
+                  <div className="text-base font-bold truncate">{userLocation ? "Ubicación detectada" : "Jr. Los Rosales 245"}</div>
+                  <div className="text-sm text-zipp-black-5">{userLocation ? "Cerca de tu posición" : "San Isidro, Lima"}</div>
                 </div>
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-zipp-green-md to-zipp-lime flex items-center justify-center text-sm font-black text-zipp-black shadow-lg overflow-hidden">
+                  <img src="https://img.icons8.com/color/96/rickshaw.png" className="w-8 h-8 object-contain" alt="M" />
+                </div>
+              </div>
 
                 <div className="mt-4 ml-5 self-start bg-zipp-black/85 backdrop-blur-md border border-zipp-lime/20 px-4 py-2 rounded-full text-[11px] font-bold text-zipp-lime flex items-center gap-2 pointer-events-auto">
                   <div className="w-1.5 h-1.5 bg-zipp-lime rounded-full animate-pulse" />
@@ -603,7 +634,10 @@ export default function App() {
               <div className="bg-zipp-black-2 border border-zipp-lime/20 rounded-2xl p-4 mb-6 shadow-xl">
                 <div className="flex items-center gap-4 py-2">
                   <div className="w-2.5 h-2.5 bg-zipp-lime rounded-full shrink-0" />
-                  <input className="flex-1 bg-transparent border-none outline-none font-medium text-sm" value="Jr. Los Rosales 245, San Isidro" readOnly />
+                  <div className="flex-1 flex items-center justify-between">
+                    <input className="flex-1 bg-transparent border-none outline-none font-medium text-sm" value={userLocation ? "Mi ubicación actual" : "Jr. Los Rosales 245, San Isidro"} readOnly />
+                    {userLocation && <span className="text-[10px] bg-zipp-lime/20 text-zipp-lime px-2 py-0.5 rounded-full font-bold">GPS Activo</span>}
+                  </div>
                 </div>
                 <div className="h-px bg-zipp-lime/10 my-2 border-dashed border-t" />
                 <div className="flex items-center gap-4 py-2">
@@ -729,7 +763,10 @@ export default function App() {
                 height="100%" 
                 frameBorder="0" 
                 style={{ border: 0, filter: isDark ? 'invert(90%) hue-rotate(180deg) brightness(0.8) contrast(1.2)' : 'none' }}
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15836.4382894371!2d-76.375489!3d-6.483667!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x91ba093f1857973d%3A0x8898989898989898!2sTarapoto!5e0!3m2!1sen!2spe!4v1710170000000!5m2!1sen!2spe"
+                src={userLocation 
+                  ? `https://maps.google.com/maps?q=${userLocation.lat},${userLocation.lng}&z=16&output=embed`
+                  : "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15836.4382894371!2d-76.375489!3d-6.483667!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x91ba093f1857973d%3A0x8898989898989898!2sTarapoto!5e0!3m2!1sen!2spe!4v1710170000000!5m2!1sen!2spe"
+                }
                 allowFullScreen
               ></iframe>
               
