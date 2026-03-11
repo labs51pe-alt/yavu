@@ -1,0 +1,21 @@
+{
+  "name": "YAVU — Mototaxi Perú",
+  "short_name": "YAVU",
+  "description": "Mototaxis rápidos y seguros en Perú",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080D09",
+  "theme_color": "#C6F135",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/zipp/192/192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://picsum.photos/seed/zipp/512/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

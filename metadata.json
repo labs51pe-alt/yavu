@@ -1,0 +1,5 @@
+{
+  "name": "YAVU — Mototaxi Perú",
+  "description": "La aplicación de mototaxis más segura y confiable del Perú. YAVU conecta pasajeros con conductores verificados con precios fijos y seguridad total en cada tramo corto.",
+  "requestFramePermissions": ["geolocation"]
+}

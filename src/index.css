@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-zipp-lime: var(--zipp-lime);
+  --color-zipp-lime-dark: var(--zipp-lime-dark);
+  --color-zipp-yellow: #FFE234;
+  --color-zipp-orange: #FF7B1C;
+  --color-zipp-green: #1A4D2E;
+  --color-zipp-green-md: var(--zipp-green-md);
+  --color-zipp-green-lt: #3AAD64;
+  
+  --color-zipp-bg: var(--zipp-bg);
+  --color-zipp-surface: var(--zipp-surface);
+  --color-zipp-surface-2: var(--zipp-surface-2);
+  --color-zipp-surface-3: var(--zipp-surface-3);
+  --color-zipp-text: var(--zipp-text);
+  --color-zipp-text-muted: var(--zipp-text-muted);
+
+  /* Aliases for backward compatibility with existing code */
+  --color-zipp-black: var(--zipp-bg);
+  --color-zipp-black-2: var(--zipp-surface);
+  --color-zipp-black-3: var(--zipp-surface-2);
+  --color-zipp-black-4: var(--zipp-surface-3);
+  --color-zipp-black-5: var(--zipp-text-muted);
+  --color-zipp-white: var(--zipp-text);
+}
+
+:root {
+  --zipp-lime: #C6F135;
+  --zipp-lime-dark: #9DC200;
+  --zipp-green-md: #2A7A48;
+  --zipp-bg: #080D09;
+  --zipp-surface: #0F1812;
+  --zipp-surface-2: #172114;
+  --zipp-surface-3: #1F2E1A;
+  --zipp-text: #F0F7E8;
+  --zipp-text-muted: #6B7F60;
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --zipp-lime: #1A7A3A;
+  --zipp-lime-dark: #0FA040;
+  --zipp-green-md: #3AAD64;
+  --zipp-bg: #F4FBE8;
+  --zipp-surface: #FFFFFF;
+  --zipp-surface-2: #EDF5D8;
+  --zipp-surface-3: #DCF0B0;
+  --zipp-text: #0E2010;
+  --zipp-text-muted: #3D6B35;
+  color-scheme: light;
+}
+
+@layer base {
+  body {
+    @apply bg-zipp-bg text-zipp-text antialiased transition-colors duration-300;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
