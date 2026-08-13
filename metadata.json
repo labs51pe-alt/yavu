@@ -1,5 +1,7 @@
 {
-  "name": "YAVU — Mototaxi Perú",
-  "description": "La aplicación de mototaxis más segura y confiable del Perú. YAVU conecta pasajeros con conductores verificados con precios fijos y seguridad total en cada tramo corto.",
-  "requestFramePermissions": ["geolocation"]
+  "name": "YAVU — Delivery & Envíos en Moto Huancayo",
+  "description": "Sistema express de delivery, encomiendas, compras y courier en moto para Huancayo, El Tambo y Chilca. Rápido, seguro y con motorizados verificados.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
+

@@ -1,23 +1,24 @@
 {
-  "name": "YAVU — Mototaxi Perú",
-  "short_name": "YAVU",
-  "description": "Mototaxis rápidos y seguros en Perú",
+  "name": "YAVU — Delivery & Envíos en Moto Huancayo",
+  "short_name": "YAVU Delivery",
+  "description": "Delivery express, encomiendas y compras en moto en Huancayo, El Tambo y Chilca",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#080D09",
-  "theme_color": "#C6F135",
+  "theme_color": "#E31E24",
   "icons": [
     {
-      "src": "https://img.icons8.com/color/192/rickshaw.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/2830/2830312.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://img.icons8.com/color/512/rickshaw.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/2830/2830312.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }
   ]
 }
+

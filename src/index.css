@@ -6,13 +6,10 @@
   --font-display: "Plus Jakarta Sans", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   
-  --color-zipp-lime: var(--zipp-lime);
-  --color-zipp-lime-dark: var(--zipp-lime-dark);
-  --color-zipp-yellow: #FFE234;
+  --color-zipp-red: #E31E24;
+  --color-zipp-red-dark: #B3151A;
+  --color-zipp-yellow: var(--zipp-yellow);
   --color-zipp-orange: #FF7B1C;
-  --color-zipp-green: #1A4D2E;
-  --color-zipp-green-md: var(--zipp-green-md);
-  --color-zipp-green-lt: #3AAD64;
   
   --color-zipp-bg: var(--zipp-bg);
   --color-zipp-surface: var(--zipp-surface);
@@ -20,6 +17,9 @@
   --color-zipp-surface-3: var(--zipp-surface-3);
   --color-zipp-text: var(--zipp-text);
   --color-zipp-text-muted: var(--zipp-text-muted);
+  --color-zipp-border: var(--zipp-border);
+  --color-zipp-border-strong: var(--zipp-border-strong);
+  --color-zipp-card-inner: var(--zipp-card-inner);
 
   /* Aliases for backward compatibility with existing code */
   --color-zipp-black: var(--zipp-bg);
@@ -31,34 +31,36 @@
 }
 
 :root {
-  --zipp-lime: #C6F135;
-  --zipp-lime-dark: #9DC200;
-  --zipp-green-md: #2A7A48;
-  --zipp-bg: #080D09;
-  --zipp-surface: #0F1812;
-  --zipp-surface-2: #172114;
-  --zipp-surface-3: #1F2E1A;
-  --zipp-text: #F0F7E8;
-  --zipp-text-muted: #6B7F60;
+  --zipp-bg: #090E0B;
+  --zipp-surface: #111A14;
+  --zipp-surface-2: #18241C;
+  --zipp-surface-3: #203126;
+  --zipp-text: #F3F8F2;
+  --zipp-text-muted: #859B85;
+  --zipp-border: rgba(255, 255, 255, 0.09);
+  --zipp-border-strong: rgba(255, 255, 255, 0.18);
+  --zipp-yellow: #FFE234;
+  --zipp-card-inner: rgba(255, 255, 255, 0.04);
   color-scheme: dark;
 }
 
 [data-theme="light"] {
-  --zipp-lime: #1A7A3A;
-  --zipp-lime-dark: #0FA040;
-  --zipp-green-md: #3AAD64;
-  --zipp-bg: #F4FBE8;
+  --zipp-bg: #F4F6F9;
   --zipp-surface: #FFFFFF;
-  --zipp-surface-2: #EDF5D8;
-  --zipp-surface-3: #DCF0B0;
-  --zipp-text: #0E2010;
-  --zipp-text-muted: #3D6B35;
+  --zipp-surface-2: #F1F4F8;
+  --zipp-surface-3: #E2E8F0;
+  --zipp-text: #0F172A;
+  --zipp-text-muted: #64748B;
+  --zipp-border: rgba(15, 23, 42, 0.09);
+  --zipp-border-strong: rgba(15, 23, 42, 0.18);
+  --zipp-yellow: #D97706;
+  --zipp-card-inner: #F8FAFC;
   color-scheme: light;
 }
 
 @layer base {
   body {
-    @apply bg-zipp-bg text-zipp-text antialiased transition-colors duration-300;
+    @apply bg-zipp-bg text-zipp-text antialiased transition-colors duration-200;
     -webkit-tap-highlight-color: transparent;
   }
 }
