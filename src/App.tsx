@@ -24,7 +24,8 @@ import {
   TrendingUp,
   Receipt,
   Search,
-  Plus
+  Plus,
+  LogOut
 } from 'lucide-react';
 import { 
   Role, 
@@ -50,6 +51,7 @@ import { PriceCalculatorModal } from './components/PriceCalculatorModal';
 import { SecurityHubModal } from './components/SecurityHubModal';
 import { AuthPortalModal } from './components/AuthPortalModal';
 import { SplashScreen } from './components/SplashScreen';
+import { WelcomeEntryScreen } from './components/WelcomeEntryScreen';
 import { cn } from './utils';
 
 const DEFAULT_USER: UserProfile = {
@@ -82,6 +84,9 @@ export default function App() {
   });
   const [isAuthPortalOpen, setIsAuthPortalOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  const [hasEnteredApp, setHasEnteredApp] = useState(() => {
+    return localStorage.getItem('yavu_session_active') === 'true';
+  });
 
   // Orders State
   const [orders, setOrders] = useState<DeliveryOrder[]>(() => {
@@ -120,6 +125,8 @@ export default function App() {
   const handleLoginSuccess = (user: UserProfile) => {
     setCurrentUser(user);
     setRole(user.role);
+    setHasEnteredApp(true);
+    localStorage.setItem('yavu_session_active', 'true');
     if (user.role === 'rider') {
       setCurrentScreen('rider-dashboard');
     } else {
@@ -128,6 +135,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('yavu_session_active');
     const guestUser: UserProfile = {
       id: 'guest_' + Date.now().toString().slice(-4),
       name: 'Invitado Huancayo',
@@ -141,7 +149,10 @@ export default function App() {
     };
     setCurrentUser(guestUser);
     setRole('client');
-    setIsAuthPortalOpen(true);
+    setIsAuthPortalOpen(false);
+    setIsSecurityOpen(false);
+    setIsPriceCalcOpen(false);
+    setHasEnteredApp(false);
   };
 
   const activeOrder = orders.find((o) => o.id === activeOrderId) || null;
@@ -184,8 +195,18 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Mobile-first Container Frame */}
-      <div className="w-full max-w-md min-h-screen bg-zipp-bg flex flex-col relative border-x border-zipp-border shadow-2xl overflow-x-hidden">
+      {/* If not logged in / entered yet, render the Start Screen for YAVU Delivery */}
+      {!hasEnteredApp ? (
+        <WelcomeEntryScreen
+          onEnterApp={(user) => {
+            handleLoginSuccess(user);
+          }}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
+        />
+      ) : (
+        /* Mobile-first Container Frame for Main Delivery Dashboard */
+        <div className="w-full max-w-md min-h-screen bg-zipp-bg flex flex-col relative border-x border-zipp-border shadow-2xl overflow-x-hidden animate-in fade-in duration-300">
         
         {/* Top App Header */}
         <header className="sticky top-0 z-50 bg-zipp-surface/90 backdrop-blur-xl border-b border-zipp-border px-4 py-3 flex items-center justify-between shadow-sm">
@@ -247,8 +268,18 @@ export default function App() {
             <button
               onClick={toggleTheme}
               className="p-2 rounded-xl bg-zipp-surface-2 border border-zipp-border text-zipp-text-muted hover:text-zipp-text transition-colors"
+              title="Cambiar modo claro/oscuro"
             >
               {isDark ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+
+            {/* Direct Quick Logout Button */}
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500 border border-red-500/30 hover:border-red-500 text-red-500 hover:text-white transition-all shadow-sm group"
+              title="Cerrar sesión y volver al inicio"
+            >
+              <LogOut size={16} className="transition-transform group-hover:-translate-x-0.5" />
             </button>
           </div>
         </header>
@@ -589,6 +620,7 @@ export default function App() {
                 setRole('client');
                 setCurrentScreen('client-home');
               }}
+              onLogout={handleLogout}
             />
           )}
 
@@ -707,13 +739,14 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Logout Button */}
-              <div className="text-center pt-2">
+              {/* Logout & Return to Welcome Screen Button */}
+              <div className="pt-2 space-y-2">
                 <button
                   onClick={handleLogout}
-                  className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors"
+                  className="w-full py-3 rounded-2xl bg-zipp-surface-2 hover:bg-red-500/10 border border-zipp-border hover:border-red-500/40 text-red-500 font-bold text-xs transition-all flex items-center justify-center gap-2"
                 >
-                  Cerrar Sesión / Salir de la Cuenta
+                  <User size={15} />
+                  <span>Cerrar Sesión y Volver a Pantalla de Inicio</span>
                 </button>
               </div>
             </div>
@@ -832,6 +865,7 @@ export default function App() {
         />
 
       </div>
+      )}
     </div>
   );
 }

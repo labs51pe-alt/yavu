@@ -21,7 +21,10 @@ import {
   RefreshCw,
   Zap,
   Star,
-  Clock
+  Clock,
+  MessageSquare,
+  Copy,
+  Volume2
 } from 'lucide-react';
 import { UserProfile, Role, HuancayoDistrict } from '../types';
 import { HUANCAYO_DISTRICTS } from '../data/huancayoData';
@@ -32,9 +35,36 @@ interface AuthPortalModalProps {
   onLoginSuccess: (user: UserProfile) => void;
   initialRole?: Role;
   allowDismiss?: boolean;
+  defaultStep?: 'welcome' | 'phone-input' | 'otp-verify';
 }
 
 type AuthStep = 'welcome' | 'phone-input' | 'otp-verify' | 'user-info' | 'rider-register' | 'success';
+
+// Play modern subtle notification chime
+function playNotificationChime() {
+  try {
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12); // A5
+    
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start();
+    osc.stop(ctx.currentTime + 0.35);
+  } catch (e) {
+    // Audio might be blocked by browser policy before interaction; benign
+  }
+}
 
 export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
   isOpen,
@@ -42,19 +72,21 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
   onLoginSuccess,
   initialRole = 'client',
   allowDismiss = true,
+  defaultStep = 'phone-input',
 }) => {
-  const [step, setStep] = useState<AuthStep>('welcome');
+  const [step, setStep] = useState<AuthStep>(defaultStep);
   const [role, setRole] = useState<Role>(initialRole);
   const [activeSlide, setActiveSlide] = useState(0);
 
   // Phone & OTP state
-  const [phone, setPhone] = useState('');
-  const [generatedOtp, setGeneratedOtp] = useState('7291');
+  const [phone, setPhone] = useState('964123456');
+  const [generatedOtp, setGeneratedOtp] = useState('8492');
   const [otpDigits, setOtpDigits] = useState(['', '', '', '']);
   const [otpError, setOtpError] = useState(false);
   const [resendTimer, setResendTimer] = useState(30);
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [showSmsBanner, setShowSmsBanner] = useState(false);
+  const [carrierName, setCarrierName] = useState('Entel / Claro');
 
   // User details state
   const [fullName, setFullName] = useState('Carlos Alanya');
@@ -78,6 +110,14 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
   ];
+
+  // Update initial step if changed from props
+  useEffect(() => {
+    if (isOpen) {
+      setStep(defaultStep);
+      setOtpError(false);
+    }
+  }, [isOpen, defaultStep]);
 
   // Auto carousel rotation on welcome screen
   useEffect(() => {
@@ -130,22 +170,51 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
     }
   ];
 
+  // Detect Peruvian carrier based on 3-digit prefix
+  const getCarrier = (num: string) => {
+    if (num.startsWith('964') || num.startsWith('954') || num.startsWith('948')) return 'Entel Perú';
+    if (num.startsWith('997') || num.startsWith('998') || num.startsWith('980')) return 'Claro Perú';
+    if (num.startsWith('999') || num.startsWith('988') || num.startsWith('975')) return 'Movistar';
+    return 'Bitel / Claro';
+  };
+
   // Send OTP
   const handleSendOtp = () => {
-    if (phone.replace(/\D/g, '').length < 9) return;
+    const rawPhone = phone.replace(/\D/g, '');
+    if (rawPhone.length < 9) return;
     setIsSendingCode(true);
+    
+    // Generate fresh 4-digit code (e.g. 5831, 8492)
     const newCode = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(newCode);
+    setCarrierName(getCarrier(rawPhone));
 
     setTimeout(() => {
       setIsSendingCode(false);
       setStep('otp-verify');
-      setResendTimer(30);
+      setResendTimer(28);
       setShowSmsBanner(true);
+      playNotificationChime();
       setTimeout(() => {
         otpInputRefs[0].current?.focus();
-      }, 200);
-    }, 900);
+      }, 250);
+    }, 750);
+  };
+
+  // Auto fill OTP from banner
+  const handleAutoFillOtp = () => {
+    const digits = generatedOtp.split('');
+    setOtpDigits(digits);
+    setOtpError(false);
+    setShowSmsBanner(false);
+    
+    setTimeout(() => {
+      if (role === 'rider') {
+        setStep('rider-register');
+      } else {
+        setStep('user-info');
+      }
+    }, 350);
   };
 
   // Handle OTP digit changes
@@ -163,14 +232,16 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
     // Check if fully entered
     if (newDigits.every((d) => d !== '') && index === 3) {
       const entered = newDigits.join('');
-      if (entered === generatedOtp || entered === '1234' || entered === '7291') {
+      if (entered === generatedOtp || entered === '1234' || entered === '8492' || entered === '7291') {
         // Success
         setShowSmsBanner(false);
-        if (role === 'rider') {
-          setStep('rider-register');
-        } else {
-          setStep('user-info');
-        }
+        setTimeout(() => {
+          if (role === 'rider') {
+            setStep('rider-register');
+          } else {
+            setStep('user-info');
+          }
+        }, 250);
       } else {
         setOtpError(true);
       }
@@ -203,7 +274,7 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
         dni: '48920192',
       };
       finishAuth(user);
-    }, 1200);
+    }, 1000);
   };
 
   // Guest quick login
@@ -226,24 +297,24 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
   const handleCompleteClient = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setStatusMessage('Configurando tu cuenta YAVU...');
+    setStatusMessage('Iniciando sesión segura en Huancayo...');
 
     setTimeout(() => {
       setIsLoading(false);
       const user: UserProfile = {
         id: 'usr_' + Date.now().toString().slice(-6),
-        name: fullName.trim() || 'Usuario YAVU',
+        name: fullName.trim() || 'Carlos Alanya',
         phone: '+51 ' + (phone.trim() || '964 123 456'),
-        email: email.trim() || 'usuario@yavu.pe',
+        email: email.trim() || 'gaor.labs@gmail.com',
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
         role: 'client',
         district: district,
-        dni: dni || '48761209',
+        dni: dni || '48920192',
         isVerified: true,
         loginMethod: 'phone',
       };
       finishAuth(user);
-    }, 1000);
+    }, 800);
   };
 
   // Complete rider registration
@@ -270,7 +341,7 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
         soatValidUntil: riderSoatValid,
       };
       finishAuth(user);
-    }, 1200);
+    }, 1000);
   };
 
   const finishAuth = (user: UserProfile) => {
@@ -284,38 +355,48 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       
-      {/* Interactive SMS Notification Simulation Pill (Top of screen) */}
+      {/* SIMULATED PUSH NOTIFICATION / SMS TOAST (Drops from top with vibrate/sound glow) */}
       <AnimatePresence>
         {showSmsBanner && (
           <motion.div
-            initial={{ y: -80, opacity: 0 }}
-            animate={{ y: 16, opacity: 1 }}
-            exit={{ y: -80, opacity: 0 }}
-            onClick={() => {
-              setOtpDigits(generatedOtp.split(''));
-              setShowSmsBanner(false);
-              setTimeout(() => {
-                if (role === 'rider') setStep('rider-register');
-                else setStep('user-info');
-              }, 400);
-            }}
-            className="fixed top-0 z-[60] max-w-sm w-[90%] bg-zinc-900/95 text-white border border-zipp-yellow/50 rounded-2xl p-3.5 shadow-2xl cursor-pointer hover:border-zipp-yellow transition-all flex items-center gap-3"
+            initial={{ y: -100, opacity: 0, scale: 0.95 }}
+            animate={{ y: 20, opacity: 1, scale: 1 }}
+            exit={{ y: -100, opacity: 0, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+            className="fixed top-0 z-[70] max-w-sm w-[92%] bg-zinc-950/95 text-white border-2 border-zipp-yellow/60 rounded-3xl p-4 shadow-2xl backdrop-blur-xl ring-4 ring-zipp-yellow/10"
           >
-            <div className="w-9 h-9 rounded-xl bg-zipp-red flex items-center justify-center text-white shrink-0 font-black text-xs shadow-md">
-              SMS
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black text-zipp-yellow uppercase tracking-wider">
-                  YAVU Verificación Huancayo
-                </span>
-                <span className="text-[10px] text-zinc-400">Ahora</span>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-zipp-red to-rose-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-zipp-red/40 border border-white/20">
+                <MessageSquare size={20} />
               </div>
-              <p className="text-xs text-zinc-200 truncate mt-0.5">
-                Tu código de acceso es: <strong className="text-white text-sm tracking-widest">{generatedOtp}</strong> (Toca para autocompletar)
-              </p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-zipp-yellow">
+                      SMS • {carrierName}
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  </div>
+                  <span className="text-[10px] text-zinc-400 font-mono">Ahora</span>
+                </div>
+                <p className="text-xs text-zinc-200 mt-1 leading-snug">
+                  Tu código de verificación <strong className="text-white">YAVU Huancayo</strong> es:
+                </p>
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="bg-zinc-900 border border-zinc-700 px-3 py-1 rounded-xl font-mono font-black text-base text-zipp-yellow tracking-widest">
+                    {generatedOtp}
+                  </div>
+                  <button
+                    onClick={handleAutoFillOtp}
+                    className="flex-1 py-1.5 px-3 bg-zipp-red hover:bg-zipp-red-dark text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-md shadow-zipp-red/30 active:scale-95"
+                  >
+                    <Zap size={13} className="text-zipp-yellow" />
+                    <span>Autocompletar</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
@@ -327,7 +408,7 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
         className="w-full max-w-md bg-zipp-surface border border-zipp-border rounded-[32px] overflow-hidden shadow-2xl flex flex-col relative max-h-[92vh]"
       >
         
-        {/* Dismiss Button */}
+        {/* Dismiss Button (Only if allowed) */}
         {allowDismiss && (
           <button
             onClick={onClose}
@@ -338,26 +419,308 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
           </button>
         )}
 
-        {/* STEP 1: WELCOME & ONBOARDING LANDING */}
-        {step === 'welcome' && (
-          <div className="overflow-y-auto p-6 space-y-6 flex-1">
+        {/* STEP 1: PHONE NUMBER INPUT (Primary Direct Screen) */}
+        {step === 'phone-input' && (
+          <div className="p-6 space-y-5 overflow-y-auto flex-1">
             
-            {/* Header Brand Bar */}
-            <div className="text-center pt-2 space-y-2">
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-zipp-red to-zipp-red-dark text-white px-4 py-1.5 rounded-2xl shadow-lg shadow-zipp-red/30 border border-white/20">
-                <Bike size={22} className="transform -rotate-12" />
-                <span className="font-display font-black text-xl tracking-tight">YAVU</span>
-                <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-md">
+            {/* Header / Brand */}
+            <div className="text-center space-y-2 pt-1">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-zipp-red to-zipp-red-dark text-white px-3.5 py-1.5 rounded-2xl shadow-lg shadow-zipp-red/30 border border-white/20">
+                <Bike size={18} className="transform -rotate-12" />
+                <span className="font-display font-black text-lg tracking-tight">YAVU</span>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-1.5 py-0.5 rounded">
                   Huancayo 🇵🇪
                 </span>
               </div>
-              
+
               <h2 className="font-display font-black text-2xl text-zipp-text tracking-tight">
-                El delivery express en moto de Huancayo
+                Ingreso con Celular
               </h2>
               <p className="text-xs text-zipp-text-muted max-w-xs mx-auto">
-                Envíos, mandaditos y comida en 15-25 minutos por el valle del Mantaro.
+                Coloca tu número móvil para recibir tu código SMS instantáneo de acceso seguro.
               </p>
+            </div>
+
+            {/* Role Tab Selector (Cliente vs Motorizado) */}
+            <div className="bg-zipp-surface-2 p-1.5 rounded-2xl border border-zipp-border flex">
+              <button
+                type="button"
+                onClick={() => setRole('client')}
+                className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                  role === 'client'
+                    ? 'bg-zipp-surface text-zipp-text shadow-sm border border-zipp-border'
+                    : 'text-zipp-text-muted hover:text-zipp-text'
+                }`}
+              >
+                <User size={14} className={role === 'client' ? 'text-zipp-red' : ''} />
+                <span>Modo Cliente</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('rider')}
+                className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                  role === 'rider'
+                    ? 'bg-zipp-surface text-zipp-text shadow-sm border border-zipp-border'
+                    : 'text-zipp-text-muted hover:text-zipp-text'
+                }`}
+              >
+                <Bike size={14} className={role === 'rider' ? 'text-zipp-red' : ''} />
+                <span>Modo Motorizado 🛵</span>
+              </button>
+            </div>
+
+            {/* Phone Input Box */}
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-black uppercase tracking-wider text-zipp-text-muted block mb-2 flex items-center justify-between">
+                  <span>Número Móvil (Perú)</span>
+                  <span className="text-[10px] text-green-500 font-bold">✓ Válido con SMS</span>
+                </label>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 bg-zipp-surface-2 border border-zipp-border px-3.5 py-3.5 rounded-2xl text-sm font-bold text-zipp-text shrink-0 shadow-inner">
+                    <span className="text-lg">🇵🇪</span>
+                    <span className="font-mono text-zipp-text font-black">+51</span>
+                  </div>
+                  <input
+                    type="tel"
+                    autoFocus
+                    maxLength={9}
+                    placeholder="964 123 456"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && phone.length >= 9) {
+                        handleSendOtp();
+                      }
+                    }}
+                    className="flex-1 bg-zipp-surface-2 border-2 border-zipp-border focus:border-zipp-red rounded-2xl px-4 py-3.5 text-lg font-mono font-black text-zipp-text tracking-widest placeholder:text-zipp-text-muted/60 focus:outline-none transition-all shadow-inner"
+                  />
+                </div>
+                
+                {/* Quick Phone Helper Buttons */}
+                <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1">
+                  <span className="text-[10px] text-zipp-text-muted shrink-0">Sugeridos:</span>
+                  <button
+                    type="button"
+                    onClick={() => setPhone('964123456')}
+                    className="text-[11px] font-mono font-bold bg-zipp-surface-2 hover:bg-zipp-surface border border-zipp-border px-2 py-0.5 rounded-lg text-zipp-text shrink-0"
+                  >
+                    964 123 456 (Entel)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPhone('997845210')}
+                    className="text-[11px] font-mono font-bold bg-zipp-surface-2 hover:bg-zipp-surface border border-zipp-border px-2 py-0.5 rounded-lg text-zipp-text shrink-0"
+                  >
+                    997 845 210 (Claro)
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Submit Button */}
+              <button
+                type="button"
+                onClick={handleSendOtp}
+                disabled={phone.length < 9 || isSendingCode}
+                className="w-full py-4 rounded-2xl bg-gradient-to-r from-zipp-red to-zipp-red-dark text-white font-display font-black text-sm shadow-xl shadow-zipp-red/35 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2.5 active:scale-[0.98]"
+              >
+                {isSendingCode ? (
+                  <>
+                    <RefreshCw size={18} className="animate-spin" />
+                    <span>Generando código SMS...</span>
+                  </>
+                ) : (
+                  <>
+                    <Phone size={18} />
+                    <span>Recibir Código SMS de Acceso</span>
+                    <ArrowRight size={18} />
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Other Quick Access Methods */}
+            <div className="pt-2 border-t border-zipp-border/60 space-y-2">
+              <div className="text-center">
+                <span className="text-[11px] font-bold text-zipp-text-muted uppercase tracking-wider">
+                  Otras opciones rápidas
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  disabled={isLoading}
+                  className="py-2.5 px-3 rounded-xl bg-zipp-surface-2 hover:bg-zipp-surface border border-zipp-border text-zipp-text font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                  </svg>
+                  <span>Google One-Tap</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleGuestLogin}
+                  className="py-2.5 px-3 rounded-xl bg-zipp-surface-2 hover:bg-zipp-surface border border-zipp-border text-zipp-text font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Sparkles size={14} className="text-zipp-yellow" />
+                  <span>Modo Invitado</span>
+                </button>
+              </div>
+
+              {/* View App Features Slide link */}
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => setStep('welcome')}
+                  className="text-xs font-bold text-zipp-red hover:underline"
+                >
+                  Ver beneficios y servicios de YAVU →
+                </button>
+              </div>
+            </div>
+
+            {/* Footer Trust Guarantee */}
+            <div className="pt-2 border-t border-zipp-border/50 flex items-center justify-around text-[10px] font-bold text-zipp-text-muted">
+              <span className="flex items-center gap-1">
+                <ShieldCheck size={13} className="text-emerald-500" /> DNI Verificado
+              </span>
+              <span className="flex items-center gap-1">
+                <Zap size={13} className="text-zipp-yellow" /> Yape & Plin
+              </span>
+              <span className="flex items-center gap-1">
+                <Bike size={13} className="text-zipp-red" /> 15-25 min
+              </span>
+            </div>
+
+          </div>
+        )}
+
+        {/* STEP 2: OTP VERIFICATION (4-digit code entry) */}
+        {step === 'otp-verify' && (
+          <div className="p-6 space-y-5 overflow-y-auto flex-1">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  setStep('phone-input');
+                  setShowSmsBanner(false);
+                }}
+                className="text-xs font-bold text-zipp-text-muted hover:text-zipp-text flex items-center gap-1"
+              >
+                ← Cambiar número
+              </button>
+              <span className="text-[10px] font-black uppercase tracking-wider text-zipp-yellow bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                Verificación SMS
+              </span>
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <div className="w-14 h-14 rounded-3xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 text-zipp-yellow border border-amber-500/30 mx-auto flex items-center justify-center shadow-lg shadow-amber-500/10">
+                <Lock size={26} />
+              </div>
+              <h3 className="font-display font-black text-2xl text-zipp-text">
+                Ingresa el Código SMS
+              </h3>
+              <p className="text-xs text-zipp-text-muted">
+                Hemos enviado un código de 4 dígitos a:
+              </p>
+              <p className="text-sm font-mono font-black text-zipp-text bg-zipp-surface-2 py-1 px-3 rounded-xl inline-block border border-zipp-border">
+                🇵🇪 +51 {phone}
+              </p>
+            </div>
+
+            {/* 4-digit code input boxes */}
+            <div className="space-y-4">
+              <div className="flex justify-center gap-3">
+                {otpDigits.map((digit, idx) => (
+                  <input
+                    key={idx}
+                    ref={otpInputRefs[idx]}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(idx, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                    className={`w-14 h-16 rounded-2xl bg-zipp-surface-2 border-2 text-center text-2xl font-mono font-black text-zipp-text focus:outline-none transition-all shadow-inner ${
+                      otpError
+                        ? 'border-red-500 bg-red-500/10 text-red-500 animate-shake'
+                        : digit
+                        ? 'border-zipp-red bg-zipp-red/10 text-zipp-red'
+                        : 'border-zipp-border focus:border-zipp-red focus:ring-4 focus:ring-zipp-red/10'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {otpError && (
+                <motion.p 
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-xs font-bold text-red-500 text-center flex items-center justify-center gap-1"
+                >
+                  <AlertCircle size={14} /> Código incorrecto. Prueba con: {generatedOtp}
+                </motion.p>
+              )}
+
+              {/* Quick helper chip */}
+              <div className="p-3.5 bg-gradient-to-r from-zipp-surface-2 via-zipp-surface to-zipp-surface-2 border border-zipp-border rounded-2xl text-center space-y-2">
+                <div className="flex items-center justify-center gap-1.5 text-xs text-zipp-text-muted">
+                  <MessageSquare size={13} className="text-zipp-yellow" />
+                  <span>Código de prueba simulado:</span>
+                  <strong className="text-zipp-yellow font-mono text-sm tracking-wider">{generatedOtp}</strong>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAutoFillOtp}
+                  className="w-full py-2 bg-zipp-red/15 hover:bg-zipp-red text-zipp-red hover:text-white rounded-xl text-xs font-display font-black transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Zap size={14} className="text-zipp-yellow" />
+                  <span>Tocar para autocompletar e ingresar</span>
+                </button>
+              </div>
+
+              {/* Resend timer */}
+              <div className="text-center pt-1">
+                {resendTimer > 0 ? (
+                  <span className="text-xs text-zipp-text-muted flex items-center justify-center gap-1 font-medium">
+                    <Clock size={14} /> Reenviar nuevo SMS en <strong className="font-mono text-zipp-text">{resendTimer}s</strong>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    className="text-xs font-bold text-zipp-red hover:underline flex items-center justify-center gap-1 mx-auto"
+                  >
+                    <RefreshCw size={12} /> Reenviar código SMS ahora
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: WELCOME & ONBOARDING CAROUSEL */}
+        {step === 'welcome' && (
+          <div className="overflow-y-auto p-6 space-y-5 flex-1">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setStep('phone-input')}
+                className="text-xs font-bold text-zipp-text-muted hover:text-zipp-text flex items-center gap-1"
+              >
+                ← Volver al login
+              </button>
+              <span className="text-[10px] font-black uppercase tracking-wider text-zipp-red bg-zipp-red/10 px-2 py-0.5 rounded">
+                YAVU Huancayo
+              </span>
             </div>
 
             {/* Feature Carousel Card */}
@@ -399,6 +762,7 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
                 {slides.map((_, idx) => (
                   <button
                     key={idx}
+                    type="button"
                     onClick={() => setActiveSlide(idx)}
                     className={`h-1.5 rounded-full transition-all ${
                       activeSlide === idx ? 'w-6 bg-zipp-red' : 'w-2 bg-zipp-border'
@@ -408,275 +772,36 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
               </div>
             </div>
 
-            {/* Role Tab Selector (Cliente vs Motorizado) */}
-            <div className="bg-zipp-surface-2 p-1.5 rounded-2xl border border-zipp-border flex">
-              <button
-                onClick={() => setRole('client')}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
-                  role === 'client'
-                    ? 'bg-zipp-surface text-zipp-text shadow-sm border border-zipp-border'
-                    : 'text-zipp-text-muted hover:text-zipp-text'
-                }`}
-              >
-                <User size={14} className={role === 'client' ? 'text-zipp-red' : ''} />
-                <span>Soy Cliente / Enviar</span>
-              </button>
-              <button
-                onClick={() => setRole('rider')}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
-                  role === 'rider'
-                    ? 'bg-zipp-surface text-zipp-text shadow-sm border border-zipp-border'
-                    : 'text-zipp-text-muted hover:text-zipp-text'
-                }`}
-              >
-                <Bike size={14} className={role === 'rider' ? 'text-zipp-red' : ''} />
-                <span>Soy Motorizado 🛵</span>
-              </button>
-            </div>
-
-            {/* Main Action Buttons */}
-            <div className="space-y-2.5">
-              
-              {/* Primary: Continue with Phone */}
-              <button
-                onClick={() => setStep('phone-input')}
-                className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-zipp-red to-zipp-red-dark text-white font-display font-black text-sm shadow-xl shadow-zipp-red/30 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2.5"
-              >
-                <Phone size={18} />
-                <span>Ingresar con Número de Celular (+51)</span>
-                <ArrowRight size={16} />
-              </button>
-
-              {/* Secondary: Google One-Tap */}
-              <button
-                onClick={handleGoogleLogin}
-                disabled={isLoading}
-                className="w-full py-3 px-4 rounded-2xl bg-zipp-surface-2 hover:bg-zipp-surface border border-zipp-border text-zipp-text font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2.5"
-              >
-                {isLoading ? (
-                  <RefreshCw size={16} className="animate-spin text-zipp-red" />
-                ) : (
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                  </svg>
-                )}
-                <span>Continuar con Google ({email})</span>
-              </button>
-
-              {/* Guest Quick Explore */}
-              <button
-                onClick={handleGuestLogin}
-                className="w-full py-2.5 text-center text-xs font-bold text-zipp-text-muted hover:text-zipp-text transition-colors"
-              >
-                Explorar app como Invitado →
-              </button>
-            </div>
-
-            {/* Footer Trust Badges */}
-            <div className="pt-2 border-t border-zipp-border/60 flex items-center justify-around text-[10px] font-bold text-zipp-text-muted">
-              <span className="flex items-center gap-1">
-                <ShieldCheck size={13} className="text-green-500" /> DNI Verificado
-              </span>
-              <span className="flex items-center gap-1">
-                <Zap size={13} className="text-zipp-yellow" /> Yape & Plin
-              </span>
-              <span className="flex items-center gap-1">
-                <MapPin size={13} className="text-zipp-red" /> Huancayo & Valle
-              </span>
-            </div>
-
-          </div>
-        )}
-
-        {/* STEP 2: PHONE NUMBER INPUT */}
-        {step === 'phone-input' && (
-          <div className="p-6 space-y-6 overflow-y-auto flex-1">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setStep('welcome')}
-                className="text-xs font-bold text-zipp-text-muted hover:text-zipp-text flex items-center gap-1"
-              >
-                ← Volver
-              </button>
-              <span className="text-[10px] font-black uppercase tracking-wider text-zipp-red bg-zipp-red/10 px-2 py-0.5 rounded">
-                Paso 1 de 2
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-zipp-red/15 text-zipp-red flex items-center justify-center">
-                <Phone size={24} />
-              </div>
-              <h3 className="font-display font-black text-2xl text-zipp-text">
-                Ingresa tu número de celular
-              </h3>
-              <p className="text-xs text-zipp-text-muted leading-relaxed">
-                Te enviaremos un código de seguridad por SMS o WhatsApp para verificar tu cuenta en Huancayo.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-black uppercase tracking-wider text-zipp-text-muted block mb-2">
-                  Número Telefónico (Perú)
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 bg-zipp-surface-2 border border-zipp-border px-3 py-3.5 rounded-2xl text-sm font-bold text-zipp-text shrink-0">
-                    <span>🇵🇪</span>
-                    <span>+51</span>
-                  </div>
-                  <input
-                    type="tel"
-                    autoFocus
-                    maxLength={9}
-                    placeholder="964 123 456"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                    className="flex-1 bg-zipp-surface-2 border border-zipp-border rounded-2xl px-4 py-3.5 text-base font-bold text-zipp-text tracking-wider placeholder:text-zipp-text-muted focus:outline-none focus:border-zipp-red"
-                  />
-                </div>
-                <p className="text-[11px] text-zipp-text-muted mt-2">
-                  Compatible con Yape, Plin y alertas de ruta en tiempo real.
-                </p>
-              </div>
-
-              <button
-                onClick={handleSendOtp}
-                disabled={phone.length < 9 || isSendingCode}
-                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-zipp-red to-zipp-red-dark text-white font-display font-black text-sm shadow-xl shadow-zipp-red/30 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-              >
-                {isSendingCode ? (
-                  <>
-                    <RefreshCw size={18} className="animate-spin" />
-                    <span>Enviando código...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Enviar Código de Seguridad</span>
-                    <ArrowRight size={18} />
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: OTP VERIFICATION */}
-        {step === 'otp-verify' && (
-          <div className="p-6 space-y-6 overflow-y-auto flex-1">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setStep('phone-input')}
-                className="text-xs font-bold text-zipp-text-muted hover:text-zipp-text flex items-center gap-1"
-              >
-                ← Cambiar número
-              </button>
-              <span className="text-[10px] font-black uppercase tracking-wider text-zipp-yellow bg-amber-500/10 px-2 py-0.5 rounded">
-                Verificación
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-zipp-yellow flex items-center justify-center">
-                <Lock size={24} />
-              </div>
-              <h3 className="font-display font-black text-2xl text-zipp-text">
-                Ingresa el código de 4 dígitos
-              </h3>
-              <p className="text-xs text-zipp-text-muted">
-                Enviado al <strong className="text-zipp-text">+51 {phone}</strong>
-              </p>
-            </div>
-
-            {/* 4-digit code input boxes */}
-            <div className="space-y-4">
-              <div className="flex justify-center gap-3">
-                {otpDigits.map((digit, idx) => (
-                  <input
-                    key={idx}
-                    ref={otpInputRefs[idx]}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleOtpChange(idx, e.target.value)}
-                    onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                    className={`w-14 h-16 rounded-2xl bg-zipp-surface-2 border-2 text-center text-2xl font-display font-black text-zipp-text focus:outline-none transition-all ${
-                      otpError
-                        ? 'border-red-500 bg-red-500/10 text-red-500 animate-shake'
-                        : digit
-                        ? 'border-zipp-red bg-zipp-red/5'
-                        : 'border-zipp-border focus:border-zipp-red'
-                    }`}
-                  />
-                ))}
-              </div>
-
-              {otpError && (
-                <p className="text-xs font-bold text-red-500 text-center flex items-center justify-center gap-1">
-                  <AlertCircle size={14} /> Código incorrecto. Prueba con: {generatedOtp}
-                </p>
-              )}
-
-              {/* Quick shortcut helper */}
-              <div className="p-3 bg-zipp-surface-2 border border-zipp-border rounded-2xl text-center space-y-1.5">
-                <p className="text-xs text-zipp-text-muted">
-                  ¿No recibiste el SMS? Usa el código demo de prueba:
-                </p>
-                <button
-                  onClick={() => {
-                    setOtpDigits(generatedOtp.split(''));
-                    setTimeout(() => {
-                      if (role === 'rider') setStep('rider-register');
-                      else setStep('user-info');
-                    }, 400);
-                  }}
-                  className="px-3 py-1 bg-zipp-red/15 hover:bg-zipp-red text-zipp-red hover:text-white rounded-xl text-xs font-mono font-black transition-colors"
-                >
-                  Autocompletar {generatedOtp}
-                </button>
-              </div>
-
-              {/* Resend timer */}
-              <div className="text-center pt-2">
-                {resendTimer > 0 ? (
-                  <span className="text-xs text-zipp-text-muted flex items-center justify-center gap-1">
-                    <Clock size={14} /> Reenviar código en {resendTimer}s
-                  </span>
-                ) : (
-                  <button
-                    onClick={handleSendOtp}
-                    className="text-xs font-bold text-zipp-red hover:underline"
-                  >
-                    Reenviar nuevo código SMS
-                  </button>
-                )}
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setStep('phone-input')}
+              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-zipp-red to-zipp-red-dark text-white font-display font-black text-sm shadow-xl shadow-zipp-red/30 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2.5"
+            >
+              <Phone size={18} />
+              <span>Continuar con mi Número de Celular</span>
+              <ArrowRight size={16} />
+            </button>
           </div>
         )}
 
         {/* STEP 4: CLIENT USER INFO */}
         {step === 'user-info' && (
-          <form onSubmit={handleCompleteClient} className="p-6 space-y-5 overflow-y-auto flex-1">
+          <form onSubmit={handleCompleteClient} className="p-6 space-y-4 overflow-y-auto flex-1">
             <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-green-500 bg-green-500/10 px-2 py-0.5 rounded">
-                ✓ Teléfono Verificado
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                ✓ Teléfono Verificado (+51 {phone})
               </span>
               <h3 className="font-display font-black text-2xl text-zipp-text">
                 Completa tu perfil en Huancayo
               </h3>
               <p className="text-xs text-zipp-text-muted">
-                Solo tomará 10 segundos para empezar a pedir tus envíos en moto.
+                Tu cuenta está lista para pedir tus envíos en moto en todo Huancayo.
               </p>
             </div>
 
-            <div className="space-y-3.5">
+            <div className="space-y-3">
               <div>
-                <label className="text-xs font-bold text-zipp-text block mb-1.5">
+                <label className="text-xs font-bold text-zipp-text block mb-1">
                   Nombre y Apellidos *
                 </label>
                 <input
@@ -685,18 +810,18 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Ej. Carlos Alanya"
-                  className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3.5 py-3 text-xs text-zipp-text focus:outline-none focus:border-zipp-red"
+                  className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3.5 py-2.5 text-xs text-zipp-text focus:outline-none focus:border-zipp-red"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-zipp-text block mb-1.5">
+                <label className="text-xs font-bold text-zipp-text block mb-1">
                   Distrito Principal en Huancayo *
                 </label>
                 <select
                   value={district}
                   onChange={(e) => setDistrict(e.target.value as HuancayoDistrict)}
-                  className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3.5 py-3 text-xs text-zipp-text focus:outline-none focus:border-zipp-red"
+                  className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3.5 py-2.5 text-xs text-zipp-text focus:outline-none focus:border-zipp-red"
                 >
                   {HUANCAYO_DISTRICTS.map((d) => (
                     <option key={d} value={d} className="bg-zipp-surface text-zipp-text">
@@ -707,21 +832,21 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-zipp-text block mb-1.5">
-                  Correo Electrónico (Para comprobantes)
+                <label className="text-xs font-bold text-zipp-text block mb-1">
+                  Correo Electrónico (Para boletas)
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="tuemail@gmail.com"
-                  className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3.5 py-3 text-xs text-zipp-text focus:outline-none focus:border-zipp-red"
+                  className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3.5 py-2.5 text-xs text-zipp-text focus:outline-none focus:border-zipp-red"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-zipp-text block mb-1.5">
-                  DNI (Opcional para boletas)
+                <label className="text-xs font-bold text-zipp-text block mb-1">
+                  DNI (Opcional)
                 </label>
                 <input
                   type="text"
@@ -729,7 +854,7 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
                   value={dni}
                   onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
                   placeholder="8 dígitos"
-                  className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3.5 py-3 text-xs text-zipp-text focus:outline-none focus:border-zipp-red"
+                  className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3.5 py-2.5 text-xs text-zipp-text focus:outline-none focus:border-zipp-red"
                 />
               </div>
             </div>
@@ -758,7 +883,7 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
         {step === 'rider-register' && (
           <form onSubmit={handleCompleteRider} className="p-6 space-y-4 overflow-y-auto flex-1">
             <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-zipp-yellow bg-amber-500/10 px-2 py-0.5 rounded">
+              <span className="text-[10px] font-black uppercase tracking-wider text-zipp-yellow bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
                 🛵 Registro de Motorizado Wanka
               </span>
               <h3 className="font-display font-black text-xl text-zipp-text">
@@ -780,7 +905,7 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Ej. Jhony Quispe Canchanya"
-                  className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3 py-2.5 text-xs text-zipp-text focus:outline-none focus:border-zipp-red"
+                  className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3 py-2 text-xs text-zipp-text focus:outline-none focus:border-zipp-red"
                 />
               </div>
 
@@ -795,7 +920,7 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
                     value={riderPlate}
                     onChange={(e) => setRiderPlate(e.target.value.toUpperCase())}
                     placeholder="Ej. 4892-3W"
-                    className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-zipp-text focus:outline-none focus:border-zipp-red uppercase"
+                    className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3 py-2 text-xs font-mono font-bold text-zipp-text focus:outline-none focus:border-zipp-red uppercase"
                   />
                 </div>
                 <div>
@@ -809,7 +934,7 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
                     value={dni}
                     onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
                     placeholder="48920192"
-                    className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3 py-2.5 text-xs text-zipp-text focus:outline-none focus:border-zipp-red"
+                    className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3 py-2 text-xs text-zipp-text focus:outline-none focus:border-zipp-red"
                   />
                 </div>
               </div>
@@ -823,7 +948,7 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
                   value={riderMotoModel}
                   onChange={(e) => setRiderMotoModel(e.target.value)}
                   placeholder="Ej. Honda CB125F / Bajaj Pulsar 150"
-                  className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3 py-2.5 text-xs text-zipp-text focus:outline-none focus:border-zipp-red"
+                  className="w-full bg-zipp-surface-2 border border-zipp-border rounded-xl px-3 py-2 text-xs text-zipp-text focus:outline-none focus:border-zipp-red"
                 />
               </div>
 
@@ -864,7 +989,7 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-              className="w-20 h-20 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-white flex items-center justify-center shadow-2xl shadow-green-500/40"
+              className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 text-white flex items-center justify-center shadow-2xl shadow-emerald-500/40"
             >
               <CheckCircle2 size={44} />
             </motion.div>
@@ -874,7 +999,7 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
                 ¡Bienvenido a YAVU!
               </h3>
               <p className="text-xs text-zipp-text-muted max-w-xs">
-                Acceso verificado. Conectándote con los motorizados en Huancayo...
+                Acceso verificado por SMS. Conectándote con los motorizados en Huancayo...
               </p>
             </div>
           </div>
@@ -884,3 +1009,4 @@ export const AuthPortalModal: React.FC<AuthPortalModalProps> = ({
     </div>
   );
 };
+

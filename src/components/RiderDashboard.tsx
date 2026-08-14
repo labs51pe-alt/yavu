@@ -17,7 +17,8 @@ import {
   ArrowRight, 
   Sparkles,
   TrendingUp,
-  FileText
+  FileText,
+  LogOut
 } from 'lucide-react';
 import { MotorizadoRider, DeliveryOrder, OrderStatus } from '../types';
 import { MOCK_RIDERS } from '../data/huancayoData';
@@ -28,6 +29,7 @@ interface RiderDashboardProps {
   onAcceptOrder?: (order: DeliveryOrder) => void;
   onUpdateOrderStatus?: (orderId: string, status: OrderStatus) => void;
   onSwitchToClient: () => void;
+  onLogout?: () => void;
 }
 
 export const RiderDashboard: React.FC<RiderDashboardProps> = ({
@@ -36,6 +38,7 @@ export const RiderDashboard: React.FC<RiderDashboardProps> = ({
   onAcceptOrder,
   onUpdateOrderStatus,
   onSwitchToClient,
+  onLogout,
 }) => {
   const [isOnline, setIsOnline] = useState(true);
   const [incomingOffer, setIncomingOffer] = useState<DeliveryOrder | null>(null);
@@ -167,13 +170,25 @@ export const RiderDashboard: React.FC<RiderDashboardProps> = ({
             </div>
           </div>
 
-          {/* Switch to client mode */}
-          <button
-            onClick={onSwitchToClient}
-            className="text-[11px] font-bold text-zipp-text-muted hover:text-zipp-text bg-zipp-surface-2 px-3 py-1.5 rounded-xl border border-zipp-border shadow-sm"
-          >
-            Modo Cliente
-          </button>
+          {/* Action buttons: Switch to client / Logout */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={onSwitchToClient}
+              className="text-[11px] font-bold text-zipp-text-muted hover:text-zipp-text bg-zipp-surface-2 px-2.5 py-1.5 rounded-xl border border-zipp-border shadow-sm"
+              title="Ir a modo cliente para pedir"
+            >
+              Modo Cliente
+            </button>
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="p-1.5 rounded-xl bg-red-500/10 hover:bg-red-500 border border-red-500/30 text-red-500 hover:text-white transition-colors"
+                title="Cerrar sesión de motorizado"
+              >
+                <LogOut size={14} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Online / Offline Switcher */}
