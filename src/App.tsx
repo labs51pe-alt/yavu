@@ -219,7 +219,7 @@ export default function App() {
               <div className="flex items-center gap-1.5 leading-none">
                 <span className="font-display font-black text-xl tracking-tight text-zipp-text">YAVU</span>
                 <span className="text-[10px] font-black text-zipp-red uppercase tracking-wider bg-zipp-red/15 px-1.5 py-0.5 rounded border border-zipp-red/30">
-                  Huancayo 🇵🇪
+                  EXPRESS
                 </span>
               </div>
               <span className="text-[9px] font-bold text-zipp-text-muted tracking-wide">
