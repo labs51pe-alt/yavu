@@ -9,9 +9,6 @@ import {
   Sparkles,
   ArrowRight,
   User,
-  ShoppingBag,
-  Package,
-  UtensilsCrossed,
   CheckCircle2,
   Lock,
   MessageSquare,
@@ -20,7 +17,12 @@ import {
   Sun,
   Moon,
   ChevronRight,
-  Shield
+  Shield,
+  Smartphone,
+  Download,
+  Share2,
+  PlusSquare,
+  Check
 } from 'lucide-react';
 import { UserProfile, Role, HuancayoDistrict } from '../types';
 import { HUANCAYO_DISTRICTS } from '../data/huancayoData';
@@ -75,6 +77,38 @@ export const WelcomeEntryScreen: React.FC<WelcomeEntryScreenProps> = ({
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [showSmsBanner, setShowSmsBanner] = useState(false);
   const [carrierName, setCarrierName] = useState('Entel Perú');
+
+  // PWA Install Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
+  const [showPwaGuide, setShowPwaGuide] = useState(false);
+
+  useEffect(() => {
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+      setIsPwaInstalled(true);
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        setIsPwaInstalled(true);
+      }
+      setDeferredPrompt(null);
+    } else {
+      setShowPwaGuide((prev) => !prev);
+    }
+  };
 
   // Profile setup fields
   const [fullName, setFullName] = useState('Carlos Alanya');
@@ -349,7 +383,7 @@ export const WelcomeEntryScreen: React.FC<WelcomeEntryScreenProps> = ({
                   <input
                     type="tel"
                     maxLength={10}
-                    placeholder="964 123 456"
+                    placeholder="9XXXXXXXX"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                     onKeyDown={(e) => {
@@ -359,25 +393,6 @@ export const WelcomeEntryScreen: React.FC<WelcomeEntryScreenProps> = ({
                     }}
                     className="flex-1 bg-zipp-surface-2 border-2 border-zipp-border focus:border-zipp-red rounded-2xl px-4 py-3 text-base font-mono font-black text-zipp-text tracking-widest placeholder:text-zipp-text-muted/40 focus:outline-none transition-all shadow-inner"
                   />
-                </div>
-
-                {/* Quick Suggester Chips */}
-                <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1 text-[11px]">
-                  <span className="text-[10px] text-zipp-text-muted shrink-0">Números de prueba:</span>
-                  <button
-                    type="button"
-                    onClick={() => setPhone('964123456')}
-                    className="font-mono font-bold bg-zipp-surface-2 hover:bg-zipp-surface border border-zipp-border px-2 py-0.5 rounded-lg text-zipp-text shrink-0"
-                  >
-                    964 123 456
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPhone('997845210')}
-                    className="font-mono font-bold bg-zipp-surface-2 hover:bg-zipp-surface border border-zipp-border px-2 py-0.5 rounded-lg text-zipp-text shrink-0"
-                  >
-                    997 845 210
-                  </button>
                 </div>
               </div>
 
@@ -621,82 +636,87 @@ export const WelcomeEntryScreen: React.FC<WelcomeEntryScreenProps> = ({
 
         </div>
 
-        {/* HUANCAYO DELIVERY SERVICES SECTION */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display font-black text-sm text-zipp-text">
-              ¿Qué puedes pedir en YAVU?
-            </h3>
-            <span className="text-[10px] font-bold text-zipp-red">
-              Tarifa Plana Huancayo
-            </span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-zipp-surface p-3 rounded-2xl border border-zipp-border text-center shadow-sm">
-              <div className="w-8 h-8 rounded-xl bg-zipp-red/10 text-zipp-red flex items-center justify-center mx-auto mb-1.5">
-                <Package size={17} />
+        {/* PWA MOBILE APP INSTALLATION CARD */}
+        <div className="bg-zipp-surface border border-zipp-border rounded-3xl p-4 shadow-sm space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-zipp-red to-zipp-red-dark text-white flex items-center justify-center shadow-lg shadow-zipp-red/25 shrink-0">
+                <Smartphone size={24} />
               </div>
-              <span className="text-xs font-black text-zipp-text block leading-tight">Encomiendas</span>
-              <span className="text-[9px] text-zipp-text-muted">Documentos & cajas</span>
-            </div>
-
-            <div className="bg-zipp-surface p-3 rounded-2xl border border-zipp-border text-center shadow-sm">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto mb-1.5">
-                <UtensilsCrossed size={17} />
-              </div>
-              <span className="text-xs font-black text-zipp-text block leading-tight">Pollerías</span>
-              <span className="text-[9px] text-zipp-text-muted">Comida Wanka</span>
-            </div>
-
-            <div className="bg-zipp-surface p-3 rounded-2xl border border-zipp-border text-center shadow-sm">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-1.5">
-                <ShoppingBag size={17} />
-              </div>
-              <span className="text-xs font-black text-zipp-text block leading-tight">Mandaditos</span>
-              <span className="text-[9px] text-zipp-text-muted">Compras y farmacia</span>
-            </div>
-          </div>
-        </div>
-
-        {/* HUANCAYO DELIVERY ZONES & TRUST INDICATORS */}
-        <div className="space-y-2.5 pt-1">
-          <div className="flex items-center justify-between text-xs text-zipp-text-muted">
-            <span className="font-black uppercase tracking-wider text-[10px]">
-              Zonas con Cobertura Express
-            </span>
-            <span className="text-emerald-500 font-bold text-[10px]">
-              ✓ GPS Activo
-            </span>
-          </div>
-
-          <div className="flex flex-wrap gap-1.5">
-            {HUANCAYO_DISTRICTS.slice(0, 6).map((dist) => (
-              <span
-                key={dist}
-                className="text-[10px] font-bold bg-zipp-surface border border-zipp-border px-2.5 py-1 rounded-full text-zipp-text"
-              >
-                📍 {dist}
-              </span>
-            ))}
-          </div>
-
-          <div className="p-3.5 bg-gradient-to-r from-zipp-surface via-zipp-surface-2 to-zipp-surface border border-zipp-border rounded-2xl flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2.5">
-              <ShieldCheck size={20} className="text-emerald-500 shrink-0" />
               <div>
-                <span className="font-black text-zipp-text block text-xs">
-                  Seguridad Garantizada YAVU
-                </span>
-                <span className="text-[10px] text-zipp-text-muted">
-                  Conductores con DNI, antecedentes y SOAT verificado.
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-display font-black text-sm text-zipp-text">
+                    Instalar YAVU en tu Móvil
+                  </h3>
+                  <span className="text-[9px] font-black uppercase tracking-wider text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                    PWA App
+                  </span>
+                </div>
+                <p className="text-[11px] text-zipp-text-muted leading-tight mt-0.5">
+                  Úsalo como una app nativa con acceso directo en tu pantalla de inicio.
+                </p>
               </div>
             </div>
-            <span className="text-xs font-black text-zipp-red bg-zipp-red/10 px-2 py-1 rounded-lg shrink-0">
-              100% Wanka
-            </span>
           </div>
+
+          {/* Quick Feature Pills */}
+          <div className="grid grid-cols-3 gap-1.5 pt-1 text-center">
+            <div className="bg-zipp-surface-2 p-2 rounded-xl border border-zipp-border/70">
+              <span className="text-[10px] font-black text-zipp-text block">⚡ Sin Descargas</span>
+              <span className="text-[8px] text-zipp-text-muted">No ocupa espacio</span>
+            </div>
+            <div className="bg-zipp-surface-2 p-2 rounded-xl border border-zipp-border/70">
+              <span className="text-[10px] font-black text-zipp-text block">🔔 Notificaciones</span>
+              <span className="text-[8px] text-zipp-text-muted">Estado en vivo</span>
+            </div>
+            <div className="bg-zipp-surface-2 p-2 rounded-xl border border-zipp-border/70">
+              <span className="text-[10px] font-black text-zipp-text block">🚀 Carga Rápida</span>
+              <span className="text-[8px] text-zipp-text-muted">1 solo toque</span>
+            </div>
+          </div>
+
+          {/* Action Button */}
+          {isPwaInstalled ? (
+            <div className="py-2.5 px-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-xs font-bold flex items-center justify-center gap-2">
+              <Check size={16} />
+              <span>¡YAVU ya está instalada en tu dispositivo!</span>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleInstallClick}
+                className="w-full py-3 px-4 rounded-2xl bg-zipp-surface-2 hover:bg-zipp-surface border-2 border-zipp-red/40 hover:border-zipp-red text-zipp-text font-display font-black text-xs transition-all flex items-center justify-center gap-2 shadow-sm active:scale-[0.99] group"
+              >
+                <Download size={15} className="text-zipp-red group-hover:translate-y-0.5 transition-transform" />
+                <span>Instalar Acceso Directo Móvil</span>
+              </button>
+
+              {/* Step by step guide if manual instructions needed */}
+              {showPwaGuide && (
+                <div className="p-3 rounded-2xl bg-zipp-surface-2 border border-zipp-border text-[11px] space-y-2 animate-in fade-in duration-200">
+                  <div className="space-y-1">
+                    <strong className="text-zipp-text block text-[11px] font-bold">
+                      📱 En iPhone (Safari):
+                    </strong>
+                    <p className="text-zinc-400 leading-relaxed flex items-center gap-1.5">
+                      <Share2 size={13} className="text-blue-400 shrink-0" />
+                      <span>Toca el botón <strong>Compartir</strong> y selecciona <strong className="text-zipp-text">"Agregar a pantalla de inicio"</strong>.</span>
+                    </p>
+                  </div>
+                  <div className="space-y-1 pt-1.5 border-t border-zipp-border/60">
+                    <strong className="text-zipp-text block text-[11px] font-bold">
+                      🤖 En Android (Chrome):
+                    </strong>
+                    <p className="text-zinc-400 leading-relaxed flex items-center gap-1.5">
+                      <PlusSquare size={13} className="text-emerald-400 shrink-0" />
+                      <span>Toca el menú de <strong>3 puntos (⋮)</strong> y elige <strong className="text-zipp-text">"Instalar aplicación"</strong> o "Agregar a pantalla principal".</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
       </div>

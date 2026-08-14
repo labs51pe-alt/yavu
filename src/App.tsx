@@ -70,31 +70,59 @@ const DEFAULT_USER: UserProfile = {
 export default function App() {
   // Theme & Role State
   const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem('yavu_theme') !== 'light';
+    try {
+      return localStorage.getItem('yavu_theme') !== 'light';
+    } catch {
+      return true;
+    }
   });
   const [role, setRole] = useState<Role>(() => {
-    return (localStorage.getItem('yavu_role') as Role) || 'client';
+    try {
+      return (localStorage.getItem('yavu_role') as Role) || 'client';
+    } catch {
+      return 'client';
+    }
   });
   const [currentScreen, setCurrentScreen] = useState<Screen>('client-home');
 
   // User Profile & Auth Portal State
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('yavu_user');
-    return saved ? JSON.parse(saved) : DEFAULT_USER;
+    try {
+      const saved = localStorage.getItem('yavu_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && parsed.id) return parsed;
+      }
+    } catch {
+      // fallback
+    }
+    return DEFAULT_USER;
   });
   const [isAuthPortalOpen, setIsAuthPortalOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [hasEnteredApp, setHasEnteredApp] = useState(() => {
-    return localStorage.getItem('yavu_session_active') === 'true';
+    try {
+      return localStorage.getItem('yavu_session_active') === 'true';
+    } catch {
+      return false;
+    }
   });
 
   // Orders State
   const [orders, setOrders] = useState<DeliveryOrder[]>(() => {
-    const saved = localStorage.getItem('yavu_orders');
-    return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+    try {
+      const saved = localStorage.getItem('yavu_orders');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // fallback
+    }
+    return INITIAL_ORDERS;
   });
   const [activeOrderId, setActiveOrderId] = useState<string | null>(() => {
-    return INITIAL_ORDERS[1].id; // default active food delivery
+    return INITIAL_ORDERS[1]?.id || INITIAL_ORDERS[0]?.id || null;
   });
 
   // Modals
