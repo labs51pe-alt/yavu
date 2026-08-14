@@ -16,11 +16,12 @@ import {
   CheckCircle2,
   Navigation,
   Clock,
-  Map
+  Map,
+  Zap
 } from 'lucide-react';
 import { LocationPoint, PackageSize, DeliveryOrder, HuancayoDistrict } from '../types';
-import { calculateDeliveryRate, MOCK_RIDERS, guessDistrictFromText } from '../data/huancayoData';
-import { LocationSearchInput } from './LocationSearchInput';
+import { calculateDeliveryRate, MOCK_RIDERS, guessDistrictFromText, HUANCAYO_HOTSPOTS } from '../data/huancayoData';
+import { InteractiveRoutePicker, calculateHaversineDistanceKm, calculateRoutePrice } from './InteractiveRoutePicker';
 
 interface CourierOrderFormProps {
   onOrderCreated: (order: DeliveryOrder) => void;
@@ -28,9 +29,9 @@ interface CourierOrderFormProps {
 }
 
 export const CourierOrderForm: React.FC<CourierOrderFormProps> = ({ onOrderCreated, onCancel }) => {
-  // Empty initial location states so user can search or pick on map directly
-  const [pickupLocation, setPickupLocation] = useState<LocationPoint | null>(null);
-  const [destinationLocation, setDestinationLocation] = useState<LocationPoint | null>(null);
+  // Initial default locations (Plaza Constitución -> Real Plaza)
+  const [pickupLocation, setPickupLocation] = useState<LocationPoint | null>(HUANCAYO_HOTSPOTS[1]);
+  const [destinationLocation, setDestinationLocation] = useState<LocationPoint | null>(HUANCAYO_HOTSPOTS[0]);
   
   const [packageSize, setPackageSize] = useState<PackageSize>('small');
   const [isFragile, setIsFragile] = useState(false);
@@ -46,14 +47,18 @@ export const CourierOrderForm: React.FC<CourierOrderFormProps> = ({ onOrderCreat
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const pickupDistrict = pickupLocation?.district || 'Huancayo Centro';
-  const destDistrict = destinationLocation?.district || 'Huancayo Centro';
-
-  const rateInfo = calculateDeliveryRate(
-    pickupDistrict,
-    destDistrict,
-    packageSize
+  // Live dynamic route distance and pricing
+  const currentPickup = pickupLocation || HUANCAYO_HOTSPOTS[1];
+  const currentDest = destinationLocation || HUANCAYO_HOTSPOTS[0];
+  
+  const distanceKm = calculateHaversineDistanceKm(
+    currentPickup.lat,
+    currentPickup.lng,
+    currentDest.lat,
+    currentDest.lng
   );
+
+  const priceCalc = calculateRoutePrice(distanceKm, packageSize);
 
   const packageSizes: { id: PackageSize; label: string; icon: any; maxKg: string; desc: string }[] = [
     { id: 'envelope', label: 'Sobre / Documento', icon: FileText, maxKg: 'Hasta 500g', desc: 'Contratos, trámites, llaves' },
@@ -67,12 +72,12 @@ export const CourierOrderForm: React.FC<CourierOrderFormProps> = ({ onOrderCreat
     setFormError(null);
 
     if (!pickupLocation || !pickupLocation.address.trim()) {
-      setFormError('Por favor ingresa o busca el punto de recojo (Punto A) en Huancayo.');
+      setFormError('Por favor fija o escribe el punto de recojo (Punto A 🟢) en Huancayo.');
       return;
     }
 
     if (!destinationLocation || !destinationLocation.address.trim()) {
-      setFormError('Por favor ingresa o busca el punto de entrega (Punto B) en Huancayo.');
+      setFormError('Por favor fija o escribe el punto de entrega (Punto B 🔴) en Huancayo.');
       return;
     }
 
@@ -94,12 +99,12 @@ export const CourierOrderForm: React.FC<CourierOrderFormProps> = ({ onOrderCreat
       senderPhone: senderPhone || '964000000',
       receiverName: receiverName || 'Destinatario',
       receiverPhone: receiverPhone || '954000000',
-      distanceKm: rateInfo.distanceKm,
-      estimatedMinutes: rateInfo.estMin,
-      basePrice: 4.00,
+      distanceKm: distanceKm,
+      estimatedMinutes: priceCalc.estimatedMinutes,
+      basePrice: priceCalc.baseFee,
       serviceFee: 1.00,
-      deliveryPrice: rateInfo.price,
-      totalPrice: rateInfo.price,
+      deliveryPrice: priceCalc.totalPrice,
+      totalPrice: priceCalc.totalPrice,
       paymentMethod,
       securityPin: generatedPin,
       status: 'searching_rider',
@@ -131,47 +136,21 @@ export const CourierOrderForm: React.FC<CourierOrderFormProps> = ({ onOrderCreat
         </span>
       </div>
 
-      {/* Origin & Destination Search Section */}
-      <div className="bg-zipp-surface border border-zipp-border rounded-3xl p-5 space-y-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-black uppercase tracking-widest text-zipp-text-muted">Ruta en Huancayo</span>
-          {pickupLocation && destinationLocation ? (
-            <span className="text-xs font-bold text-amber-500 dark:text-zipp-yellow flex items-center gap-1">
-              <Navigation size={12} /> {rateInfo.distanceKm} km · ~{rateInfo.estMin} min en moto
-            </span>
-          ) : (
-            <span className="text-[11px] text-zipp-text-muted">Busca en mapa o escribe</span>
-          )}
-        </div>
-
-        {/* Punto A: Recojo con buscador y mapa */}
-        <LocationSearchInput
-          label="¿Dónde recogemos el paquete?"
-          placeholder="Escribe calle, avenida o busca en el mapa..."
-          pointType="pickup"
-          selectedLocation={pickupLocation}
-          onLocationChange={(loc) => {
-            setPickupLocation(loc);
-            if (formError) setFormError(null);
-          }}
-          required
-        />
-
-        <div className="border-t border-dashed border-zipp-border my-2" />
-
-        {/* Punto B: Entrega con buscador y mapa */}
-        <LocationSearchInput
-          label="¿A dónde lo llevamos en Huancayo?"
-          placeholder="Escribe destino, barrio o busca en el mapa..."
-          pointType="destination"
-          selectedLocation={destinationLocation}
-          onLocationChange={(loc) => {
-            setDestinationLocation(loc);
-            if (formError) setFormError(null);
-          }}
-          required
-        />
-      </div>
+      {/* DUAL-PIN INTERACTIVE ROUTE & MAP SELECTOR */}
+      <InteractiveRoutePicker
+        pickupLocation={pickupLocation}
+        destinationLocation={destinationLocation}
+        onChangePickup={(loc) => {
+          setPickupLocation(loc);
+          if (formError) setFormError(null);
+        }}
+        onChangeDestination={(loc) => {
+          setDestinationLocation(loc);
+          if (formError) setFormError(null);
+        }}
+        packageSize={packageSize}
+        showPricingCard={true}
+      />
 
       {formError && (
         <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center gap-2 text-xs font-bold text-red-500">
@@ -333,10 +312,10 @@ export const CourierOrderForm: React.FC<CourierOrderFormProps> = ({ onOrderCreat
         <div className="border-t border-zipp-border pt-3 space-y-2 text-xs">
           <div className="flex justify-between text-zipp-text-muted">
             <span>
-              Tarifa de envío ({pickupDistrict} ➔ {destDistrict})
+              Tarifa de envío ({currentPickup.district} ➔ {currentDest.district} · {distanceKm} km)
             </span>
             <span className="text-zipp-text font-bold">
-              {pickupLocation && destinationLocation ? `S/ ${rateInfo.price.toFixed(2)}` : 'S/ --'}
+              S/ {priceCalc.totalPrice.toFixed(2)}
             </span>
           </div>
           <div className="flex justify-between text-zipp-text-muted">
@@ -344,12 +323,12 @@ export const CourierOrderForm: React.FC<CourierOrderFormProps> = ({ onOrderCreat
             <span className="text-green-500 font-bold">Incluido 🛡️</span>
           </div>
           <div className="flex justify-between items-baseline pt-2 border-t border-zipp-border">
-            <span className="font-extrabold text-sm text-zipp-text">Total estimado:</span>
+            <span className="font-extrabold text-sm text-zipp-text">Total calculado en tiempo real:</span>
             <div className="text-right">
               <span className="font-display font-black text-2xl text-amber-500 dark:text-zipp-yellow">
-                S/ {(pickupLocation && destinationLocation ? rateInfo.price : 4.50).toFixed(2)}
+                S/ {priceCalc.totalPrice.toFixed(2)}
               </span>
-              <span className="text-[10px] text-zipp-text-muted block">Precio transparente sin sorpresas</span>
+              <span className="text-[10px] text-zipp-text-muted block">Precio transparente con GPS exacto</span>
             </div>
           </div>
         </div>

@@ -101,36 +101,36 @@ export const HuancayoMap: React.FC<HuancayoMapProps> = ({
         </div>
       </div>
 
-      {/* Pickup Marker (Punto A) */}
+      {/* Pickup Marker (Punto A 🟢) */}
       <div
         className="absolute z-20 transform -translate-x-1/2 -translate-y-1/2"
         style={{ left: `${startX}%`, top: `${startY}%` }}
       >
         <div className="relative group">
-          <div className="w-8 h-8 rounded-full bg-zipp-red flex items-center justify-center text-white shadow-[0_0_20px_rgba(227,30,36,0.8)] border-2 border-white">
+          <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-[0_0_20px_rgba(34,197,94,0.8)] border-2 border-white">
             <span className="text-[11px] font-black">A</span>
           </div>
-          <div className="absolute top-9 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/90 border border-zipp-red/40 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-lg backdrop-blur-sm">
-            {pickup?.district || 'Punto Recojo'}
+          <div className="absolute top-9 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/90 border border-emerald-500/40 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-lg backdrop-blur-sm">
+            🟢 {pickup?.district || 'Punto Recojo'}
           </div>
         </div>
       </div>
 
-      {/* Destination Marker (Punto B) */}
+      {/* Destination Marker (Punto B 🔴) */}
       <div
         className="absolute z-20 transform -translate-x-1/2 -translate-y-1/2"
         style={{ left: `${endX}%`, top: `${endY}%` }}
       >
         <div className="relative group">
           <motion.div
-            animate={{ scale: [1, 1.2, 1] }}
+            animate={{ scale: [1, 1.15, 1] }}
             transition={{ repeat: Infinity, duration: 1.8 }}
-            className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center text-white font-black shadow-[0_0_25px_rgba(34,197,94,0.8)] border-2 border-white"
+            className="w-9 h-9 rounded-full bg-zipp-red flex items-center justify-center text-white font-black shadow-[0_0_25px_rgba(227,30,36,0.8)] border-2 border-white"
           >
             <span className="text-[11px] font-black">B</span>
           </motion.div>
-          <div className="absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/90 border border-green-500/40 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-lg backdrop-blur-sm">
-            {destination?.district || 'Punto Entrega'}
+          <div className="absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/90 border border-zipp-red/40 text-white text-[9px] font-bold px-2 py-0.5 rounded-md shadow-lg backdrop-blur-sm">
+            🔴 {destination?.district || 'Punto Entrega'}
           </div>
         </div>
       </div>
